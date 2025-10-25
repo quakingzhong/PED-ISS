@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEP·ISS地震系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#F8A4C4',
+                        secondary: '#FCE4EC',
+                        warning: '#F59E0B',
+                        light: '#FAFAFA',
+                        dark: '#4B5563',
+                        card: '#FFFFFF',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-shadow {
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            }
+            .animate-fade-in {
+                animation: fadeIn 0.5s ease-in-out;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        }
+    </style>
+</head>
+<body class="bg-light text-dark font-sans">
+    <div class="container mx-auto px-4 py-6">
+        <header class="bg-card rounded-xl card-shadow p-4 mb-6 text-center">
+            <h1 class="text-2xl font-bold text-primary">PEP·ISS地震系统</h1>
+            <p class="text-gray-600 text-sm mt-1">实时更新地震预警、震级、震源与烈度数据</p>
+            <p class="text-gray-500 text-xs mt-2" id="last-update-time">最新更新时间：加载中...</p>
+        </header>
+
+        <section class="mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-primary">中国地震预警</h2>
+                <span id="china-badge" class="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full">
+                    加载中...
+                </span>
+            </div>
+            <div id="error-china" class="hidden bg-card rounded-xl card-shadow p-6 text-center">
+                <p class="text-gray-600">中国地震预警数据加载失败，请刷新页面重试</p>
+            </div>
+            <div id="china-list" class="grid grid-cols-1 gap-4 content-auto">
+                <div id="cwa-card" class="bg-card rounded-xl card-shadow p-5 animate-fade-in" data-source="CWA">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-semibold text-primary">预警源：CWA</span>
+                        <span class="text-xs text-gray-400">无有效预警</span>
+                    </div>
+                    <p class="text-gray-600 text-center text-sm">当前无 CWA 地震预警</p>
+                </div>
+                <div id="cenc-card" class="bg-card rounded-xl card-shadow p-5 animate-fade-in" data-source="CENC">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-semibold text-primary">预警源：中国地震台网</span>
+                        <span class="text-xs text-gray-400">无有效预警</span>
+                    </div>
+                    <p class="text-gray-600 text-center text-sm">当前无 中国地震台网 地震预警</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-primary">日本地震预警</h2>
+                <span id="japan-badge" class="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full">
+                    加载中...
+                </span>
+            </div>
+            <div id="error-japan" class="hidden bg-card rounded-xl card-shadow p-6 text-center">
+                <p class="text-gray-600">日本地震预警数据加载失败，请刷新页面重试</p>
+            </div>
+            <div id="japan-list" class="grid grid-cols-1 gap-4 content-auto">
+                <div id="jma-card" class="bg-card rounded-xl card-shadow p-5 animate-fade-in" data-source="JMA">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-semibold text-primary">预警源：日本JMA</span>
+                        <span class="text-xs text-gray-400">无有效预警</span>
+                    </div>
+                    <p class="text-gray-600 text-center text-sm">当前无 日本JMA 地震预警</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-primary">地震综合信息</h2>
+                <span id="earthquake-badge" class="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full">
+                    加载中...
+                </span>
+            </div>
+            <div id="error-earthquake" class="hidden bg-card rounded-xl card-shadow p-6 text-center">
+                <p class="text-gray-600">地震数据加载失败，请刷新页面重试</p>
+            </div>
+            <div id="earthquake-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 content-auto">
+                <div class="col-span-full bg-card rounded-xl card-shadow p-5 animate-fade-in text-center">
+                    <p class="text-gray-600">暂无地震信息</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-primary">预警历史记录</h2>
+                <div class="flex items-center gap-2">
+                    <button id="clear-history" class="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-full transition-colors">
+                        <i class="fa fa-trash-o mr-1"></i>清空记录
+                    </button>
+                    <span id="history-count" class="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full">
+                        0条记录
+                    </span>
+                </div>
+            </div>
+            <div id="history-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 content-auto">
+                <div class="col-span-full bg-card rounded-xl card-shadow p-5 animate-fade-in text-center">
+                    <p class="text-gray-600">暂无预警历史记录</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <audio id="alert-sound" preload="auto">
+        <source src="https://otologic.jp/sounds/se/pre/Emergency_Alert01-2.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="text-center text-gray-500 text-xs py-4">alpha0.0.0</div>
+
+    <script>
+        const alertSound = document.getElementById('alert-sound');
+        
+        function playAlertSound() {
+            alertSound.pause();
+            alertSound.currentTime = 0;
+            alertSound.play().catch(error => {
+                console.log("自动播放失败:", error);
+            });
+        }
+
+        const HISTORY_KEY = 'earthquake_warning_history';
+        const MAX_HISTORY_COUNT = 30;
+        const HISTORY_EXPIRE_MINUTES = 30;
+
+        function loadHistory() {
+            try {
+                const stored = localStorage.getItem(HISTORY_KEY);
+                if (!stored) return [];
+                const history = JSON.parse(stored);
+                const now = getBeijingTime().getTime();
+                return history.filter(item => (now - item.timestamp) < HISTORY_EXPIRE_MINUTES * 60 * 1000);
+            } catch (e) {
+                console.error("加载历史记录失败", e);
+                return [];
+            }
+        }
+
+        function saveHistory(history) {
+            try {
+                const trimmed = history.slice(0, MAX_HISTORY_COUNT);
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+                updateHistoryUI();
+            } catch (e) {
+                console.error("保存历史记录失败", e);
+            }
+        }
+
+        function addToHistory(item) {
+            const history = loadHistory();
+            const isDuplicate = history.some(h => 
+                h.eventId === item.eventId && h.reportNum === item.reportNum
+            );
+            if (!isDuplicate) {
+                history.unshift({
+                    ...item,
+                    timestamp: getBeijingTime().getTime()
+                });
+                saveHistory(history);
+            }
+        }
+
+        function clearHistory() {
+            localStorage.removeItem(HISTORY_KEY);
+            updateHistoryUI();
+        }
+
+        function updateHistoryUI() {
+            const history = loadHistory();
+            const historyList = document.getElementById("history-list");
+            const historyCount = document.getElementById("history-count");
+            
+            historyCount.textContent = `${history.length}条记录`;
+            
+            if (history.length === 0) {
+                historyList.innerHTML = `
+                    <div class="col-span-full bg-card rounded-xl card-shadow p-5 animate-fade-in text-center">
+                        <p class="text-gray-600">暂无预警历史记录</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = "";
+            history.forEach(item => {
+                const time = new Date(item.timestamp).toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                const intensityColor = getIntensityColor(item.intensity);
+                
+                html += `
+                    <div class="bg-card rounded-xl card-shadow p-5 animate-fade-in border-l-4 ${item.borderColor}">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-semibold text-primary">${item.source}</span>
+                            <span class="text-xs text-gray-500">记录时间：${time}</span>
+                        </div>
+                        <div class="mb-2">
+                            <h3 class="text-base font-bold text-dark">${item.location} ${item.magnitude} 级地震</h3>
+                        </div>
+                        <div class="pl-2 space-y-1 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">发报时间</span>
+                                <span class="font-medium">${item.reportTime}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">震源深度</span>
+                                <span class="font-medium">${item.depth}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-500">${item.intensityLabel}</span>
+                                <span class="font-medium ${intensityColor}">${item.intensity}</span>
+                            </div>
+                            <div class="flex justify-end mt-1">
+                                <span class="text-xs text-gray-400">${item.reportType}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            historyList.innerHTML = html;
+        }
+
+        document.getElementById("clear-history").addEventListener("click", clearHistory);
+
+        let currentSpeech = null;
+        function speakChinese(text) {
+            if (currentSpeech && window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel(currentSpeech);
+            }
+            if (!window.speechSynthesis) {
+                console.log("当前浏览器不支持语音合成功能");
+                return;
+            }
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voices = window.speechSynthesis.getVoices();
+            const chineseVoice = voices.find(voice => 
+                voice.lang.includes('zh-CN') || 
+                voice.name.includes('中文') || 
+                voice.name.includes('Chinese') ||
+                voice.name.includes('慧涛') ||
+                voice.name.includes('Xiaoyi')
+            );
+            if (chineseVoice) utterance.voice = chineseVoice;
+            utterance.rate = 0.9;
+            utterance.volume = 1;
+            utterance.pitch = 1;
+            currentSpeech = utterance;
+            window.speechSynthesis.speak(utterance);
+            console.log("语音播报内容：", text);
+        }
+
+        let lastValidCwaData = null;
+        let cwaShowStartTime = null;
+        let lastValidCencData = null;
+        let cencShowStartTime = null;
+        let lastValidJmaData = null;
+        let jmaShowStartTime = null;
+        const WARNING_DURATION = 3 * 60 * 1000;
+
+        function getIntensityColor(intensity) {
+            if (!intensity) return "text-gray-500";
+            const num = parseFloat(intensity.replace(/[^0-9.]/g, ''));
+            if (num <= 2) return "text-green-500";
+            if (num <= 4) return "text-yellow-500";
+            return "text-red-500";
+        }
+
+        function getBeijingTime() {
+            const now = new Date();
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            return new Date(utc + (3600000 * 8));
+        }
+
+        function getTimeDiffInMinutes(timeStr) {
+            if (!timeStr) return Infinity;
+            const [datePart, timePart] = timeStr.split(' ');
+            if (!datePart || !timePart) return Infinity;
+            const [year, month, day] = datePart.split(/[\/-]/).map(Number);
+            const [hour, minute, second] = timePart.split(':').map(Number);
+            const reportTime = new Date(year, month - 1, day, hour, minute, second);
+            const beijingTime = getBeijingTime();
+            return Math.abs((beijingTime - reportTime) / (1000 * 60));
+        }
+
+        function formatUpdateTime() {
+            const now = getBeijingTime();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hour = String(now.getHours()).padStart(2, '0');
+            const minute = String(now.getMinutes()).padStart(2, '0');
+            const second = String(now.getSeconds()).padStart(2, '0');
+            return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+        }
+
+        function updateLastUpdateTime() {
+            const timeElement = document.getElementById("last-update-time");
+            timeElement.textContent = `最新更新时间：${formatUpdateTime()}`;
+        }
+
+        function cwaDataComparer(newData, oldData) {
+            if (!newData || !oldData) return false;
+            return (
+                newData.ReportNum === oldData.ReportNum &&
+                newData.HypoCenter === oldData.HypoCenter &&
+                newData.Magunitude === oldData.Magunitude &&
+                newData.MaxIntensity === oldData.MaxIntensity
+            );
+        }
+
+        function cwaCardRenderer(data) {
+            const hypocenter = data.HypoCenter || "未知震源地";
+            const magnitude = data.Magunitude || "未知震级";
+            const reportNum = data.ReportNum || "未知发报数";
+            const reportTime = data.ReportTime || "未知时间";
+            const originTime = data.OriginTime || "未知发震时间";
+            const depthRaw = data.Depth;
+            const depth = depthRaw === 0 ? "极浅" : (depthRaw ? `${depthRaw} km` : "未知深度");
+            const maxIntensity = data.MaxIntensity || "未知震度";
+            const intensityColor = getIntensityColor(maxIntensity);
+
+            addToHistory({
+                source: "预警源：CWA",
+                eventId: data.EventID || `cwa_${Date.now()}`,
+                reportNum: reportNum,
+                location: hypocenter,
+                magnitude: magnitude,
+                reportTime: reportTime,
+                depth: depth,
+                intensity: `震度${maxIntensity}`,
+                intensityLabel: "最大震度",
+                reportType: `第 ${reportNum} 报`,
+                borderColor: "border-primary"
+            });
+
+            const speakText = `CWA发布新地震预警。震源地：${hypocenter}，震级：${magnitude}级，震源深度：${depth}，最大震度：${maxIntensity}度，发报时间：${reportTime}。`;
+            playAlertSound();
+            speakChinese(speakText);
+
+            return `
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold text-primary">预警源：CWA</span>
+                    <span class="text-xs text-warning">第 ${reportNum} 报</span>
+                </div>
+                <div class="mb-3">
+                    <h3 class="text-base font-bold text-dark">${hypocenter} ${magnitude} 级地震</h3>
+                </div>
+                <div class="pl-2 space-y-2 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">发报时间</span>
+                        <span class="font-medium">${reportTime}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">发震时间</span>
+                        <span class="font-medium">${originTime}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">震源深度</span>
+                        <span class="font-medium">${depth}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">最大震度</span>
+                        <span class="font-medium ${intensityColor}">震度${maxIntensity}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        const cwaNoWarningHtml = `
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-semibold text-primary">预警源：CWA</span>
+                <span class="text-xs text-gray-400">无有效预警</span>
+            </div>
+            <p class="text-gray-600 text-center text-sm">当前无 CWA 地震预警</p>
+        `;
+
+        function fetchCwaData() {
+            const cwaApiUrl = "https://api.wolfx.jp/cwa_eew.json";
+            fetch(cwaApiUrl)
+                .then(response => response.json())
+                .then(currentData => {
+                    const now = getBeijingTime().getTime();
+                    let isNewWarning = false;
+
+                    const reportTime = currentData.ReportTime;
+                    const timeDiff = getTimeDiffInMinutes(reportTime);
+                    const isCurrentValid = !!currentData && currentData.isCancel !== true && timeDiff < 3;
+
+                    if (isCurrentValid) {
+                        if (lastValidCwaData === null) {
+                            lastValidCwaData = { ...currentData };
+                            cwaShowStartTime = now;
+                        } else if (!cwaDataComparer(currentData, lastValidCwaData)) {
+                            isNewWarning = true;
+                            lastValidCwaData = { ...currentData };
+                            cwaShowStartTime = now;
+                        }
+                    }
+
+                    if (lastValidCwaData && (now - cwaShowStartTime) < WARNING_DURATION) {
+                        cwaCard.innerHTML = cwaCardRenderer(lastValidCwaData);
+                        if (isNewWarning) console.log("CWA检测到新预警，重置3分钟显示");
+                    } else {
+                        cwaCard.innerHTML = cwaNoWarningHtml;
+                        lastValidCwaData = null;
+                        cwaShowStartTime = null;
+                    }
+                })
+                .catch(() => {
+                    cwaCard.innerHTML = cwaNoWarningHtml;
+                    lastValidCwaData = null;
+                    cwaShowStartTime = null;
+                });
+        }
+
+        function cencDataComparer(newData, oldData) {
+            if (!newData || !oldData) return false;
+            return (
+                newData.EventID === oldData.EventID &&
+                newData.ReportNum === oldData.ReportNum &&
+                newData.Magnitude === oldData.Magnitude &&
+                newData.MaxIntensity === oldData.MaxIntensity
+            );
+        }
+
+        function cencCardRenderer(data) {
+            const hypocenter = data.HypoCenter || "未知震源地";
+            const magnitude = data.Magnitude || "未知震级";
+            const reportNum = data.ReportNum || "未知发报数";
+            const reportTime = data.ReportTime || "未知时间";
+            const originTime = data.OriginTime || "未知发震时间";
+            const depthRaw = data.Depth;
+            const depth = depthRaw === 0 ? "极浅" : (depthRaw ? `${depthRaw} km` : "未知深度");
+            const maxIntensity = data.MaxIntensity || "未知烈度";
+            const intensityColor = getIntensityColor(maxIntensity);
+
+            addToHistory({
+                source: "预警源：中国地震台网",
+                eventId: data.EventID || `cenc_${Date.now()}`,
+                reportNum: reportNum,
+                location: hypocenter,
+                magnitude: magnitude,
+                reportTime: reportTime,
+                depth: depth,
+                intensity: `烈度${maxIntensity}`,
+                intensityLabel: "最大烈度",
+                reportType: `第 ${reportNum} 报`,
+                borderColor: "border-primary"
+            });
+
+            const speakText = `中国地震台网发布新地震预警。震源地：${hypocenter}，震级：${magnitude}级，震源深度：${depth}，最大烈度：${maxIntensity}度，发报时间：${reportTime}。`;
+            playAlertSound();
+            speakChinese(speakText);
+
+            return `
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold text-primary">预警源：中国地震台网</span>
+                    <span class="text-xs text-warning">第 ${reportNum} 报</span>
+                </div>
+                <div class="mb-3">
+                    <h3 class="text-base font-bold text-dark">${hypocenter} ${magnitude} 级地震</h3>
+                </div>
+                <div class="pl-2 space-y-2 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">发报时间</span>
+                        <span class="font-medium">${reportTime}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">发震时间</span>
+                        <span class="font-medium">${originTime}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">震源深度</span>
+                        <span class="font-medium">${depth}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">最大烈度</span>
+                        <span class="font-medium ${intensityColor}">烈度${maxIntensity}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        const cencNoWarningHtml = `
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-semibold text-primary">预警源：中国地震台网</span>
+                <span class="text-xs text-gray-400">无有效预警</span>
+            </div>
+            <p class="text-gray-600 text-center text-sm">当前无 中国地震台网 地震预警</p>
+        `;
+
+        function fetchCencData() {
+            const cencApiUrl = "https://api.wolfx.jp/cenc_eew.json";
+            fetch(cencApiUrl)
+                .then(response => response.json())
+                .then(currentData => {
+                    const now = getBeijingTime().getTime();
+                    let isNewWarning = false;
+
+                    const reportTime = currentData.ReportTime;
+                    const timeDiff = getTimeDiffInMinutes(reportTime);
+                    const isCurrentValid = !!currentData && currentData.isCancel !== true && timeDiff < 3;
+
+                    if (isCurrentValid) {
+                        if (lastValidCencData === null) {
+                            lastValidCencData = { ...currentData };
+                            cencShowStartTime = now;
+                        } else if (!cencDataComparer(currentData, lastValidCencData)) {
+                            isNewWarning = true;
+                            lastValidCencData = { ...currentData };
+                            cencShowStartTime = now;
+                        }
+                    }
+
+                    if (lastValidCencData && (now - cencShowStartTime) < WARNING_DURATION) {
+                        cencCard.innerHTML = cencCardRenderer(lastValidCencData);
+                        if (isNewWarning) console.log("中国地震台网检测到新预警，重置3分钟显示");
+                    } else {
+                        cencCard.innerHTML = cencNoWarningHtml;
+                        lastValidCencData = null;
+                        cencShowStartTime = null;
+                    }
+                })
+                .catch(() => {
+                    cencCard.innerHTML = cencNoWarningHtml;
+                    lastValidCencData = null;
+                    cencShowStartTime = null;
+                });
+        }
+
+        function jmaDataComparer(newData, oldData) {
+            if (!newData || !oldData) return false;
+            return (
+                newData.EventID === oldData.EventID &&
+                newData.Serial === oldData.Serial &&
+                newData.Hypocenter === oldData.Hypocenter &&
+                newData.Magunitude === oldData.Magunitude &&
+                newData.MaxIntensity === oldData.MaxIntensity
+            );
+        }
+
+        function jmaCardRenderer(data) {
+            const hypocenter = data.Hypocenter || "未知震源地";
+            const magnitude = data.Magunitude || "未知震级";
+            const serial = data.Serial || "未知发报数";
+            const announcedTime = data.AnnouncedTime || "未知时间";
+            const originTime = data.OriginTime || "未知发震时间";
+            const depthRaw = data.Depth;
+            const depth = depthRaw === 0 ? "极浅" : (depthRaw ? `${depthRaw} km` : "未知深度");
+            const maxIntensity = data.MaxIntensity || "未知震度";
+            const intensityColor = getIntensityColor(maxIntensity);
+            const isFinal = data.isFinal ? "最终報" : "中間報";
+            const reportType = data.isFinal ? "最终" : "中间";
+
+            addToHistory({
+                source: "预警源：日本JMA",
+                eventId: data.EventID || `jma_${Date.now()}`,
+                reportNum: serial,
+                location: hypocenter,
+                magnitude: magnitude,
+                reportTime: announcedTime,
+                depth: depth,
+                intensity: `震度${maxIntensity}`,
+                intensityLabel: "最大震度",
+                reportType: `${isFinal}（第 ${serial} 报）`,
+                borderColor: "border-warning"
+            });
+
+            const speakText = `日本JMA发布${reportType}地震预警。震源地：${hypocenter}，震级：${magnitude}级，震源深度：${depth}，最大震度：${maxIntensity}度，发报时间：${announcedTime}。`;
+            playAlertSound();
+            speakChinese(speakText);
+
+            return `
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold text-primary">预警源：日本JMA</span>
+                    <span class="text-xs text-warning">${isFinal}（第 ${serial} 报）</span>
+                </div>
+                <div class="mb-3">
+                    <h3 class="text-base font-bold text-dark">${hypocenter} ${magnitude} 级地震</h3>
+                </div>
+                <div class="pl-2 space-y-2 text-sm">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">发报时间</span>
+                        <span class="font-medium">${announcedTime}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">发震时间</span>
+                        <span class="font-medium">${originTime}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">震源深度</span>
+                        <span class="font-medium">${depth}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-500">最大震度</span>
+                        <span class="font-medium ${intensityColor}">震度${maxIntensity}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        const jmaNoWarningHtml = `
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-semibold text-primary">预警源：日本JMA</span>
+                <span class="text-xs text-gray-400">无有效预警</span>
+            </div>
+            <p class="text-gray-600 text-center text-sm">当前无 日本JMA 地震预警</p>
+        `;
+
+        function fetchJmaData() {
+            const jmaApiUrl = "https://api.wolfx.jp/jma_eew.json";
+            fetch(jmaApiUrl)
+                .then(response => response.json())
+                .then(currentData => {
+                    const now = getBeijingTime().getTime();
+                    let isNewWarning = false;
+
+                    const reportTime = currentData.AnnouncedTime;
+                    const timeDiff = getTimeDiffInMinutes(reportTime);
+                    const isCurrentValid = !!currentData && currentData.isCancel !== true && timeDiff < 3;
+
+                    if (isCurrentValid) {
+                        if (lastValidJmaData === null) {
+                            lastValidJmaData = { ...currentData };
+                            jmaShowStartTime = now;
+                        } else if (!jmaDataComparer(currentData, lastValidJmaData)) {
+                            isNewWarning = true;
+                            lastValidJmaData = { ...currentData };
+                            jmaShowStartTime = now;
+                        }
+                    }
+
+                    if (lastValidJmaData && (now - jmaShowStartTime) < WARNING_DURATION) {
+                        jmaCard.innerHTML = jmaCardRenderer(lastValidJmaData);
+                        if (isNewWarning) console.log("日本JMA检测到新预警，重置3分钟显示");
+                    } else {
+                        jmaCard.innerHTML = jmaNoWarningHtml;
+                        lastValidJmaData = null;
+                        jmaShowStartTime = null;
+                    }
+                })
+                .catch(() => {
+                    jmaCard.innerHTML = jmaNoWarningHtml;
+                    lastValidJmaData = null;
+                    jmaShowStartTime = null;
+                });
+        }
+
+        const earthquakeList = document.getElementById("earthquake-list");
+        let lastMergedEarthquakeData = null;
+
+        function processCencEqData(cencData) {
+            return Object.values(cencData)
+                .filter(item => item && item.time && item.placeName)
+                .slice(0, 10)
+                .map(item => ({
+                    source: "中国地震台网",
+                    eventId: item.EventID,
+                    time: item.time,
+                    location: item.placeName,
+                    magnitude: item.magnitude || "未知震级",
+                    depth: item.depth || "未知深度",
+                    intensity: item.intensity || "未知烈度",
+                    reportTime: null
+                }));
+        }
+
+        function processP2pEqData(p2pData) {
+            return p2pData
+                .filter(item => item && item.time && item.earthquake?.hypocenter)
+                .map(item => {
+                    const rawTime = item.time || "";
+                    const formattedTime = rawTime.split('.')[0];
+                    return {
+                        source: "P2Pquake",
+                        eventId: item.EventID || item.time,
+                        time: formattedTime,
+                        location: item.earthquake.hypocenter.name || "未知震源",
+                        magnitude: item.earthquake.hypocenter.magnitude || "未知震级",
+                        depth: (item.earthquake.hypocenter.depth || "未知深度").toString(),
+                        intensity: item.points?.[0]?.scale 
+                            ? `震度${Math.floor(Number(item.points[0].scale) / 10)}` 
+                            : "未知震度",
+                        reportTime: null
+                    };
+                });
+        }
+
+        function mergeAndSortEqData(cencProcessed, p2pProcessed) {
+            const merged = [...cencProcessed, ...p2pProcessed];
+            merged.sort((a, b) => new Date(b.time) - new Date(a.time));
+            return merged;
+        }
+
+        function renderEarthquakeCard(eqItem) {
+            const depthRaw = parseInt(eqItem.depth);
+            const depth = isNaN(depthRaw) 
+                ? "未知深度" 
+                : (depthRaw === 0 ? "极浅" : `${depthRaw} km`);
+            const intensityColor = getIntensityColor(eqItem.intensity);
+            const displayIntensity = eqItem.intensity 
+                ? (eqItem.source === "中国地震台网" ? `烈度${eqItem.intensity}` : eqItem.intensity) 
+                : "未知";
+
+            return `
+                <div class="bg-card rounded-xl card-shadow p-5 animate-fade-in" data-event-id="${eqItem.eventId}">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-semibold text-primary">数据来源：${eqItem.source}</span>
+                        <span class="text-xs text-gray-500">${eqItem.time.split(' ')[1]}</span>
+                    </div>
+                    <div class="mb-3">
+                        <h3 class="text-base font-bold text-dark">${eqItem.location} ${eqItem.magnitude} 级地震</h3>
+                    </div>
+                    <div class="pl-2 space-y-2 text-sm">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-500">发震时间</span>
+                            <span class="font-medium">${eqItem.time}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-500">震源深度</span>
+                            <span class="font-medium">${depth}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-500">${eqItem.source === "中国地震台网" ? "最大烈度" : "最大震度"}</span>
+                            <span class="font-medium ${intensityColor}">${displayIntensity}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function fetchEarthquakeData() {
+            const cencEqUrl = "https://api.wolfx.jp/cenc_eqlist.json";
+            const p2pEqUrl = "https://api.p2pquake.net/v2/history?codes=551&codes=552";
+            const earthquakeBadge = document.getElementById("earthquake-badge");
+            const errorEarthquake = document.getElementById("error-earthquake");
+
+            try {
+                const [cencRes, p2pRes] = await Promise.all([
+                    fetch(cencEqUrl),
+                    fetch(p2pEqUrl)
+                ]);
+                if (!cencRes.ok || !p2pRes.ok) throw new Error("网络响应异常");
+
+                const cencData = await cencRes.json();
+                const p2pData = await p2pRes.json();
+
+                const cencProcessed = processCencEqData(cencData);
+                const p2pProcessed = processP2pEqData(p2pData);
+                const mergedData = mergeAndSortEqData(cencProcessed, p2pProcessed);
+
+                const mergedStr = JSON.stringify(mergedData);
+                if (mergedStr === JSON.stringify(lastMergedEarthquakeData)) return;
+                lastMergedEarthquakeData = mergedData;
+
+                errorEarthquake.classList.add("hidden");
+                if (mergedData.length === 0) {
+                    earthquakeBadge.className = "px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full";
+                    earthquakeBadge.textContent = "无数据";
+                    earthquakeList.innerHTML = `
+                        <div class="col-span-full bg-card rounded-xl card-shadow p-5 animate-fade-in text-center">
+                            <p class="text-gray-600">暂无地震信息</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                earthquakeBadge.className = "px-3 py-1 bg-primary text-white text-xs font-semibold rounded-full";
+                earthquakeBadge.textContent = `共 ${mergedData.length} 条记录`;
+                let cardsHtml = "";
+                mergedData.forEach(item => {
+                    cardsHtml += renderEarthquakeCard(item);
+                });
+                earthquakeList.innerHTML = cardsHtml;
+
+            } catch (err) {
+                if (!lastMergedEarthquakeData) {
+                    errorEarthquake.classList.remove("hidden");
+                    earthquakeBadge.className = "px-3 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded-full";
+                    earthquakeBadge.textContent = "加载失败";
+                }
+            }
+        }
+
+        function updateBadges() {
+            const chinaBadge = document.getElementById("china-badge");
+            const japanBadge = document.getElementById("japan-badge");
+            const now = getBeijingTime().getTime();
+
+            const cwaHasValid = lastValidCwaData && (now - cwaShowStartTime) < WARNING_DURATION;
+            const cencHasValid = lastValidCencData && (now - cencShowStartTime) < WARNING_DURATION;
+            chinaBadge.className = cwaHasValid || cencHasValid
+                ? "px-3 py-1 bg-warning text-white text-xs font-semibold rounded-full"
+                : "px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full";
+            chinaBadge.textContent = cwaHasValid || cencHasValid ? "有有效预警" : "无有效预警";
+
+            const jmaHasValid = lastValidJmaData && (now - jmaShowStartTime) < WARNING_DURATION;
+            japanBadge.className = jmaHasValid
+                ? "px-3 py-1 bg-warning text-white text-xs font-semibold rounded-full"
+                : "px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full";
+            japanBadge.textContent = jmaHasValid ? "有有效预警" : "无有效预警";
+        }
+
+        function handleFirstInteraction() {
+            const tempAudio = new Audio();
+            tempAudio.src = 'data:audio/mp3;base64,//uQxAAAEvGLs=';
+            tempAudio.play().catch(e => console.log("激活音频上下文:", e));
+            
+            document.removeEventListener('click', handleFirstInteraction);
+            document.removeEventListener('touchstart', handleFirstInteraction);
+        }
+
+        function initAndUpdate() {
+            fetchCwaData();
+            fetchCencData();
+            fetchJmaData();
+            fetchEarthquakeData();
+            updateLastUpdateTime();
+            updateBadges();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            document.addEventListener('click', handleFirstInteraction);
+            document.addEventListener('touchstart', handleFirstInteraction);
+            
+            updateHistoryUI();
+            window.speechSynthesis.onvoiceschanged = initAndUpdate;
+            initAndUpdate();
+        });
+
+        setInterval(initAndUpdate, 10000);
+    </script>
+</body>
+</html>
