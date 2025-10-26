@@ -40,10 +40,68 @@
                 from { opacity: 0; transform: translateY(10px); }
                 to { opacity: 1; transform: translateY(0); }
             }
+            .settings-panel {
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.3s ease-in-out;
+            }
+            .settings-panel.active {
+                opacity: 1;
+                visibility: visible;
+            }
+            .range-slider {
+                -webkit-appearance: none;
+                height: 6px;
+                border-radius: 3px;
+                background: #ddd;
+                outline: none;
+            }
+            .range-slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background: #F8A4C4;
+                cursor: pointer;
+                transition: all 0.15s ease;
+            }
+            .range-slider::-webkit-slider-thumb:hover {
+                transform: scale(1.2);
+            }
+            .range-marks {
+                position: relative;
+                height: 8px;
+                margin-top: -8px;
+            }
+            .range-mark {
+                position: absolute;
+                top: 0;
+                width: 1px;
+                height: 8px;
+                background: #999;
+                transform: translateX(-50%);
+            }
+            .range-mark-label {
+                position: absolute;
+                top: 8px;
+                font-size: 12px;
+                color: #666;
+                transform: translateX(-50%);
+            }
+            .confirm-modal {
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.2s ease-in-out;
+            }
+            .confirm-modal.active {
+                opacity: 1;
+                visibility: visible;
+            }
         }
     </style>
 </head>
-<body class="bg-light text-dark font-sans">
+<body class="bg-light text-dark font-sans relative min-h-screen">
     <div class="container mx-auto px-4 py-6">
         <header class="bg-card rounded-xl card-shadow p-4 mb-6 text-center">
             <h1 class="text-2xl font-bold text-primary">PEP·ISS地震系统</h1>
@@ -51,7 +109,7 @@
             <p class="text-gray-500 text-xs mt-2" id="last-update-time">最新更新时间：加载中...</p>
         </header>
 
-        <section class="mb-8">
+        <section class="mb-8" id="china-warning-section">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-semibold text-primary">中国地震预警</h2>
                 <span id="china-badge" class="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full">
@@ -79,7 +137,7 @@
             </div>
         </section>
 
-        <section class="mb-8">
+        <section class="mb-8" id="japan-warning-section">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-semibold text-primary">日本地震预警</h2>
                 <span id="japan-badge" class="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full">
@@ -100,7 +158,7 @@
             </div>
         </section>
 
-        <section class="mb-8">
+        <section class="mb-8" id="earthquake-info-section">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-semibold text-primary">地震综合信息</h2>
                 <span id="earthquake-badge" class="px-3 py-1 bg-gray-200 text-gray-700 text-xs font-semibold rounded-full">
@@ -117,7 +175,7 @@
             </div>
         </section>
 
-        <section class="mb-8">
+        <section class="mb-8" id="history-section">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-semibold text-primary">预警历史记录</h2>
                 <div class="flex items-center gap-2">
@@ -137,28 +195,561 @@
         </section>
     </div>
 
-    <audio id="alert-sound" preload="auto">
+    <div class="text-center text-gray-500 text-xs py-4">alpha0.0.1</div>
+
+    <!-- 设置按钮 -->
+    <button id="settings-btn" class="fixed bottom-6 right-6 bg-primary text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-opacity-90 transition-all z-30">
+        <i class="fa fa-cog text-lg"></i>
+    </button>
+
+    <!-- 设置面板 -->
+    <div id="settings-panel" class="settings-panel fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4">
+        <div class="bg-card shadow-2xl rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-primary">设置</h2>
+                <button id="close-settings" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- 声音设置 -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold mb-4 text-dark">声音警报</h3>
+                
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <label class="text-sm font-medium">启用声音警报</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="enable-all-sounds" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="pl-2 space-y-6">
+                    <!-- 紧急地震速报（予报）- 对应原常规地震预警 -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label for="enable-regular-alert" class="text-sm font-medium">紧急地震速报（予报）</label>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="enable-regular-alert" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                        <div class="flex gap-2 mt-1">
+                            <input type="text" id="regular-alert-url" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value="https://otologic.jp/sounds/se/pre/Emergency_Alert01-2.mp3">
+                            <button id="test-regular-alert" class="px-3 py-2 bg-primary text-white text-sm rounded-md hover:bg-opacity-90 transition-colors">
+                                试听
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">适用于一般强度地震预警</p>
+                    </div>
+                    
+                    <!-- 紧急地震速报（警报）- 对应原重大地震预警 -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label for="enable-major-alert" class="text-sm font-medium">紧急地震速报（警报）</label>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="enable-major-alert" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                        <div class="flex gap-2 mt-1">
+                            <input type="text" id="major-alert-url" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value="https://otologic.jp/sounds/se/pre/Emergency_Alert02-2.mp3">
+                            <button id="test-major-alert" class="px-3 py-2 bg-primary text-white text-sm rounded-md hover:bg-opacity-90 transition-colors">
+                                试听
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">适用于高强度地震预警</p>
+                    </div>
+                    
+                    <!-- 地震情报通知 -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label for="enable-info-alert" class="text-sm font-medium">地震情报通知</label>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="enable-info-alert" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                        <div class="flex gap-2 mt-1">
+                            <input type="text" id="info-alert-url" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" value="https://otologic.jp/sounds/se/pre/News-Alert04-1.mp3">
+                            <button id="test-info-alert" class="px-3 py-2 bg-primary text-white text-sm rounded-md hover:bg-opacity-90 transition-colors">
+                                试听
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">适用于新地震情报通知</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 数据源设置 -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold mb-4 text-dark">数据源</h3>
+                
+                <div class="mb-6 pl-2">
+                    <h4 class="text-base font-medium mb-3 text-gray-700">预警源</h4>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label for="source-cwa" class="text-sm font-medium">CWA 台湾预警</label>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="source-cwa" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <label for="source-cenc" class="text-sm font-medium">CENC 中国预警</label>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="source-cenc" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <label for="source-jma" class="text-sm font-medium">JMA 日本预警</label>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="source-jma" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pl-2">
+                    <h4 class="text-base font-medium mb-3 text-gray-700">地震情报源</h4>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label for="info-cenc" class="text-sm font-medium">CENC 中国情报</label>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="info-cenc" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <label for="info-p2p" class="text-sm font-medium">P2P 日本情报</label>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="info-p2p" class="sr-only peer" checked>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 更新设置 -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold mb-4 text-dark">更新</h3>
+                <div class="space-y-6 pl-2">
+                    <!-- 获取数据时间频率 -->
+                    <div class="flex flex-col gap-4">
+                        <div class="flex justify-between items-center">
+                            <label for="update-frequency" class="text-sm font-medium">获取数据时间频率（秒）</label>
+                            <span id="frequency-value" class="text-sm font-semibold text-primary">1</span>
+                        </div>
+                        <div class="px-2">
+                            <input type="range" id="update-frequency" class="range-slider w-full" min="1" max="15" step="1" value="1">
+                            <div class="range-marks w-full">
+                                <div class="range-mark" style="left: 0%">
+                                    <div class="range-mark-label">1</div>
+                                </div>
+                                <div class="range-mark" style="left: 33.33%">
+                                    <div class="range-mark-label">5</div>
+                                </div>
+                                <div class="range-mark" style="left: 66.66%">
+                                    <div class="range-mark-label">10</div>
+                                </div>
+                                <div class="range-mark" style="left: 100%">
+                                    <div class="range-mark-label">15</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 历史预警记录 -->
+                    <div class="flex items-center justify-between">
+                        <label for="enable-history" class="text-sm font-medium">历史预警记录</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="enable-history" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 底部按钮 -->
+            <div class="flex justify-between mt-8 pt-4 border-t border-gray-200">
+                <button id="reset-settings" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors">
+                    重设
+                </button>
+                <button id="save-settings" class="px-6 py-2 bg-primary text-white rounded-md hover:bg-opacity-90 transition-colors">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 历史记录确认弹窗 -->
+    <div id="history-confirm-modal" class="confirm-modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-card rounded-xl p-6 w-full max-w-sm animate-fade-in">
+            <h3 class="text-lg font-semibold mb-4 text-dark">启用历史预警记录</h3>
+            <div class="mb-6 text-sm text-gray-600 space-y-2">
+                <p>使用localStorage本地存储，刷新页面后记录不丢失</p>
+                <p>同一事件 ID + 发报数的预警只存一次</p>
+                <p>自动过滤 30 分钟前的过期记录</p>
+                <p>最多保留 30 条最新记录</p>
+            </div>
+            <div class="flex justify-end">
+                <button id="confirm-history" class="px-4 py-2 bg-primary text-white rounded-md hover:bg-opacity-90 transition-colors">
+                    确认
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 音频元素 -->
+    <audio id="major-alert-sound" preload="auto">
+        <source src="https://otologic.jp/sounds/se/pre/Emergency_Alert02-2.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="info-alert-sound" preload="auto">
+        <source src="https://otologic.jp/sounds/se/pre/News-Alert04-1.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="regular-alert-sound" preload="auto">
         <source src="https://otologic.jp/sounds/se/pre/Emergency_Alert01-2.mp3" type="audio/mpeg">
     </audio>
 
-    <div class="text-center text-gray-500 text-xs py-4">alpha0.0.0</div>
-
     <script>
-        const alertSound = document.getElementById('alert-sound');
+        // 定时器ID
+        let updateIntervalId = null;
+        // 记录已处理的地震情报ID，用于检测新情报
+        let processedEarthquakeIds = new Set();
         
-        function playAlertSound() {
-            alertSound.pause();
-            alertSound.currentTime = 0;
-            alertSound.play().catch(error => {
-                console.log("自动播放失败:", error);
+        // 默认设置
+        const DEFAULT_SETTINGS = {
+            enableAllSounds: true,
+            sounds: {
+                // 紧急地震速报（予报）- 对应原常规地震预警
+                enableRegularAlert: true,
+                regularAlertUrl: "https://otologic.jp/sounds/se/pre/Emergency_Alert01-2.mp3",
+                // 紧急地震速报（警报）- 对应原重大地震预警
+                enableMajorAlert: true,
+                majorAlertUrl: "https://otologic.jp/sounds/se/pre/Emergency_Alert02-2.mp3",
+                // 地震情报通知
+                enableInfoAlert: true,
+                infoAlertUrl: "https://otologic.jp/sounds/se/pre/News-Alert04-1.mp3"
+            },
+            sources: {
+                cwa: true,
+                cenc: true,
+                jma: true
+            },
+            infoSources: {
+                cenc: true,
+                p2p: true
+            },
+            updateFrequency: 1, // 秒
+            enableHistory: false
+        };
+
+        // 当前设置
+        let currentSettings = { ...DEFAULT_SETTINGS };
+
+        // 加载保存的设置
+        function loadSettings() {
+            try {
+                const saved = localStorage.getItem('earthquake_settings');
+                if (saved) {
+                    currentSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+                    applySettingsToUI();
+                }
+            } catch (e) {
+                console.error("加载设置失败", e);
+                currentSettings = { ...DEFAULT_SETTINGS };
+            }
+        }
+
+        // 将设置应用到UI
+        function applySettingsToUI() {
+            // 声音设置
+            document.getElementById('enable-all-sounds').checked = currentSettings.enableAllSounds;
+            // 紧急地震速报（予报）- 原常规
+            document.getElementById('enable-regular-alert').checked = currentSettings.sounds.enableRegularAlert;
+            document.getElementById('regular-alert-url').value = currentSettings.sounds.regularAlertUrl;
+            // 紧急地震速报（警报）- 原重大
+            document.getElementById('enable-major-alert').checked = currentSettings.sounds.enableMajorAlert;
+            document.getElementById('major-alert-url').value = currentSettings.sounds.majorAlertUrl;
+            // 地震情报通知
+            document.getElementById('enable-info-alert').checked = currentSettings.sounds.enableInfoAlert;
+            document.getElementById('info-alert-url').value = currentSettings.sounds.infoAlertUrl;
+            
+            // 数据源设置
+            document.getElementById('source-cwa').checked = currentSettings.sources.cwa;
+            document.getElementById('source-cenc').checked = currentSettings.sources.cenc;
+            document.getElementById('source-jma').checked = currentSettings.sources.jma;
+            document.getElementById('info-cenc').checked = currentSettings.infoSources.cenc;
+            document.getElementById('info-p2p').checked = currentSettings.infoSources.p2p;
+            
+            // 更新频率设置
+            document.getElementById('update-frequency').value = currentSettings.updateFrequency;
+            document.getElementById('frequency-value').textContent = currentSettings.updateFrequency;
+            
+            // 历史记录设置
+            document.getElementById('enable-history').checked = currentSettings.enableHistory;
+            
+            // 更新音频源
+            updateAudioSources();
+            
+            // 禁用/启用声音设置选项
+            updateSoundSettingsState();
+        }
+        
+        // 更新音频源
+        function updateAudioSources() {
+            document.getElementById('major-alert-sound').src = currentSettings.sounds.majorAlertUrl;
+            document.getElementById('info-alert-sound').src = currentSettings.sounds.infoAlertUrl;
+            document.getElementById('regular-alert-sound').src = currentSettings.sounds.regularAlertUrl;
+        }
+        
+        // 根据总开关状态更新声音设置的启用状态
+        function updateSoundSettingsState() {
+            const isDisabled = !currentSettings.enableAllSounds;
+            const soundSettings = [
+                'enable-regular-alert', 'regular-alert-url', 'test-regular-alert',
+                'enable-major-alert', 'major-alert-url', 'test-major-alert',
+                'enable-info-alert', 'info-alert-url', 'test-info-alert'
+            ];
+            
+            soundSettings.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.disabled = isDisabled;
+                    if (isDisabled) {
+                        element.classList.add('opacity-50', 'cursor-not-allowed');
+                    } else {
+                        element.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                }
             });
         }
 
+        // 保存设置
+        function saveSettings() {
+            currentSettings = {
+                ...currentSettings,
+                enableAllSounds: document.getElementById('enable-all-sounds').checked,
+                sounds: {
+                    // 紧急地震速报（予报）- 原常规
+                    enableRegularAlert: document.getElementById('enable-regular-alert').checked,
+                    regularAlertUrl: document.getElementById('regular-alert-url').value,
+                    // 紧急地震速报（警报）- 原重大
+                    enableMajorAlert: document.getElementById('enable-major-alert').checked,
+                    majorAlertUrl: document.getElementById('major-alert-url').value,
+                    // 地震情报通知
+                    enableInfoAlert: document.getElementById('enable-info-alert').checked,
+                    infoAlertUrl: document.getElementById('info-alert-url').value
+                },
+                sources: {
+                    cwa: document.getElementById('source-cwa').checked,
+                    cenc: document.getElementById('source-cenc').checked,
+                    jma: document.getElementById('source-jma').checked
+                },
+                infoSources: {
+                    cenc: document.getElementById('info-cenc').checked,
+                    p2p: document.getElementById('info-p2p').checked
+                },
+                updateFrequency: parseInt(document.getElementById('update-frequency').value)
+            };
+
+            try {
+                localStorage.setItem('earthquake_settings', JSON.stringify(currentSettings));
+                updateAudioSources();
+                applySettings();
+                toggleSettingsPanel(false);
+            } catch (e) {
+                console.error("保存设置失败", e);
+            }
+        }
+
+        // 重置设置为默认值
+        function resetSettings() {
+            currentSettings = { ...DEFAULT_SETTINGS };
+            applySettingsToUI();
+        }
+
+        // 应用设置到页面
+        function applySettings() {
+            // 处理预警源显示
+            document.getElementById('cwa-card').style.display = currentSettings.sources.cwa ? 'block' : 'none';
+            document.getElementById('cenc-card').style.display = currentSettings.sources.cenc ? 'block' : 'none';
+            document.getElementById('jma-card').style.display = currentSettings.sources.jma ? 'block' : 'none';
+            
+            // 检查是否需要隐藏整个板块
+            const chinaHasVisible = currentSettings.sources.cwa || currentSettings.sources.cenc;
+            document.getElementById('china-warning-section').style.display = chinaHasVisible ? 'block' : 'none';
+            document.getElementById('japan-warning-section').style.display = currentSettings.sources.jma ? 'block' : 'none';
+            
+            // 更新数据获取频率
+            if (updateIntervalId) {
+                clearInterval(updateIntervalId);
+            }
+            updateIntervalId = setInterval(initAndUpdate, currentSettings.updateFrequency * 1000);
+            
+            // 处理历史记录显示
+            document.getElementById('history-section').style.display = currentSettings.enableHistory ? 'block' : 'none';
+            
+            // 重新加载地震信息
+            fetchEarthquakeData();
+        }
+
+        // 切换设置面板显示/隐藏
+        function toggleSettingsPanel(show) {
+            const panel = document.getElementById('settings-panel');
+            if (show) {
+                panel.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            } else {
+                panel.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
+
+        // 切换历史记录确认弹窗
+        function toggleHistoryConfirm(show) {
+            const modal = document.getElementById('history-confirm-modal');
+            if (show) {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            } else {
+                modal.classList.remove('active');
+                if (!document.getElementById('settings-panel').classList.contains('active')) {
+                    document.body.style.overflow = '';
+                }
+            }
+        }
+
+        // 播放音频函数
+        function playSound(type) {
+            // 总开关关闭则不播放任何声音
+            if (!currentSettings.enableAllSounds) return;
+            
+            let audioElement, soundEnabled;
+            
+            switch(type) {
+                case 'major':
+                    audioElement = document.getElementById('major-alert-sound');
+                    soundEnabled = currentSettings.sounds.enableMajorAlert;
+                    break;
+                case 'info':
+                    audioElement = document.getElementById('info-alert-sound');
+                    soundEnabled = currentSettings.sounds.enableInfoAlert;
+                    break;
+                case 'regular':
+                    audioElement = document.getElementById('regular-alert-sound');
+                    soundEnabled = currentSettings.sounds.enableRegularAlert;
+                    break;
+                default:
+                    return;
+            }
+            
+            if (soundEnabled && audioElement) {
+                audioElement.pause();
+                audioElement.currentTime = 0;
+                audioElement.play().catch(error => {
+                    console.log(`播放${type}音频失败:`, error);
+                });
+            }
+        }
+
+        // 音频测试按钮功能
+        document.getElementById('test-regular-alert').addEventListener('click', function() {
+            const testSound = new Audio(document.getElementById('regular-alert-url').value);
+            testSound.play().catch(error => {
+                console.log("测试紧急地震速报（予报）音频失败:", error);
+                alert("无法播放该音频，请检查URL是否正确");
+            });
+        });
+        
+        document.getElementById('test-major-alert').addEventListener('click', function() {
+            const testSound = new Audio(document.getElementById('major-alert-url').value);
+            testSound.play().catch(error => {
+                console.log("测试紧急地震速报（警报）音频失败:", error);
+                alert("无法播放该音频，请检查URL是否正确");
+            });
+        });
+        
+        document.getElementById('test-info-alert').addEventListener('click', function() {
+            const testSound = new Audio(document.getElementById('info-alert-url').value);
+            testSound.play().catch(error => {
+                console.log("测试地震情报通知音频失败:", error);
+                alert("无法播放该音频，请检查URL是否正确");
+            });
+        });
+
+        // 频率滑块事件
+        document.getElementById('update-frequency').addEventListener('input', function() {
+            const value = this.value;
+            document.getElementById('frequency-value').textContent = value;
+        });
+
+        // 总声音开关事件
+        document.getElementById('enable-all-sounds').addEventListener('change', function() {
+            updateSoundSettingsState();
+        });
+
+        // 历史记录开关事件
+        let pendingHistoryEnable = false;
+        document.getElementById('enable-history').addEventListener('change', function(e) {
+            if (this.checked) {
+                // 想要开启，显示确认弹窗
+                pendingHistoryEnable = true;
+                this.checked = false; // 先取消勾选，等待确认
+                toggleHistoryConfirm(true);
+            } else {
+                // 关闭直接生效
+                currentSettings.enableHistory = false;
+            }
+        });
+
+        // 确认开启历史记录
+        document.getElementById('confirm-history').addEventListener('click', function() {
+            if (pendingHistoryEnable) {
+                currentSettings.enableHistory = true;
+                document.getElementById('enable-history').checked = true;
+                pendingHistoryEnable = false;
+            }
+            toggleHistoryConfirm(false);
+        });
+
+        // 设置按钮事件绑定
+        document.getElementById('settings-btn').addEventListener('click', () => toggleSettingsPanel(true));
+        document.getElementById('close-settings').addEventListener('click', () => toggleSettingsPanel(false));
+        document.getElementById('save-settings').addEventListener('click', saveSettings);
+        document.getElementById('reset-settings').addEventListener('click', resetSettings);
+
+        // 点击遮罩层关闭设置面板
+        document.getElementById('settings-panel').addEventListener('click', function(e) {
+            if (e.target === this) {
+                toggleSettingsPanel(false);
+            }
+        });
+
+        // 点击遮罩层关闭确认弹窗
+        document.getElementById('history-confirm-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                toggleHistoryConfirm(false);
+                pendingHistoryEnable = false;
+            }
+        });
+
+        // 历史记录管理
         const HISTORY_KEY = 'earthquake_warning_history';
         const MAX_HISTORY_COUNT = 30;
         const HISTORY_EXPIRE_MINUTES = 30;
 
         function loadHistory() {
+            if (!currentSettings.enableHistory) return [];
+            
             try {
                 const stored = localStorage.getItem(HISTORY_KEY);
                 if (!stored) return [];
@@ -172,6 +763,8 @@
         }
 
         function saveHistory(history) {
+            if (!currentSettings.enableHistory) return;
+            
             try {
                 const trimmed = history.slice(0, MAX_HISTORY_COUNT);
                 localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
@@ -182,6 +775,8 @@
         }
 
         function addToHistory(item) {
+            if (!currentSettings.enableHistory) return;
+            
             const history = loadHistory();
             const isDuplicate = history.some(h => 
                 h.eventId === item.eventId && h.reportNum === item.reportNum
@@ -196,11 +791,19 @@
         }
 
         function clearHistory() {
-            localStorage.removeItem(HISTORY_KEY);
-            updateHistoryUI();
+            if (currentSettings.enableHistory) {
+                localStorage.removeItem(HISTORY_KEY);
+                updateHistoryUI();
+            }
         }
 
         function updateHistoryUI() {
+            if (!currentSettings.enableHistory) {
+                document.getElementById('history-section').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('history-section').style.display = 'block';
             const history = loadHistory();
             const historyList = document.getElementById("history-list");
             const historyCount = document.getElementById("history-count");
@@ -262,6 +865,7 @@
 
         document.getElementById("clear-history").addEventListener("click", clearHistory);
 
+        // 语音播报功能
         let currentSpeech = null;
         function speakChinese(text) {
             if (currentSpeech && window.speechSynthesis.speaking) {
@@ -289,6 +893,7 @@
             console.log("语音播报内容：", text);
         }
 
+        // 预警状态管理
         let lastValidCwaData = null;
         let cwaShowStartTime = null;
         let lastValidCencData = null;
@@ -297,6 +902,7 @@
         let jmaShowStartTime = null;
         const WARNING_DURATION = 3 * 60 * 1000;
 
+        // 通用工具函数
         function getIntensityColor(intensity) {
             if (!intensity) return "text-gray-500";
             const num = parseFloat(intensity.replace(/[^0-9.]/g, ''));
@@ -338,6 +944,7 @@
             timeElement.textContent = `最新更新时间：${formatUpdateTime()}`;
         }
 
+        // CWA预警处理
         function cwaDataComparer(newData, oldData) {
             if (!newData || !oldData) return false;
             return (
@@ -359,6 +966,14 @@
             const maxIntensity = data.MaxIntensity || "未知震度";
             const intensityColor = getIntensityColor(maxIntensity);
 
+            // 检查是否需要播放重大警报
+            const intensityValue = parseFloat(maxIntensity);
+            if (intensityValue >= 5) {
+                playSound('major');
+            } else {
+                playSound('regular');
+            }
+
             addToHistory({
                 source: "预警源：CWA",
                 eventId: data.EventID || `cwa_${Date.now()}`,
@@ -374,7 +989,6 @@
             });
 
             const speakText = `CWA发布新地震预警。震源地：${hypocenter}，震级：${magnitude}级，震源深度：${depth}，最大震度：${maxIntensity}度，发报时间：${reportTime}。`;
-            playAlertSound();
             speakChinese(speakText);
 
             return `
@@ -415,6 +1029,8 @@
         `;
 
         function fetchCwaData() {
+            if (!currentSettings.sources.cwa) return;
+            
             const cwaApiUrl = "https://api.wolfx.jp/cwa_eew.json";
             fetch(cwaApiUrl)
                 .then(response => response.json())
@@ -438,21 +1054,22 @@
                     }
 
                     if (lastValidCwaData && (now - cwaShowStartTime) < WARNING_DURATION) {
-                        cwaCard.innerHTML = cwaCardRenderer(lastValidCwaData);
+                        document.getElementById('cwa-card').innerHTML = cwaCardRenderer(lastValidCwaData);
                         if (isNewWarning) console.log("CWA检测到新预警，重置3分钟显示");
                     } else {
-                        cwaCard.innerHTML = cwaNoWarningHtml;
+                        document.getElementById('cwa-card').innerHTML = cwaNoWarningHtml;
                         lastValidCwaData = null;
                         cwaShowStartTime = null;
                     }
                 })
                 .catch(() => {
-                    cwaCard.innerHTML = cwaNoWarningHtml;
+                    document.getElementById('cwa-card').innerHTML = cwaNoWarningHtml;
                     lastValidCwaData = null;
                     cwaShowStartTime = null;
                 });
         }
 
+        // CENC预警处理
         function cencDataComparer(newData, oldData) {
             if (!newData || !oldData) return false;
             return (
@@ -474,6 +1091,14 @@
             const maxIntensity = data.MaxIntensity || "未知烈度";
             const intensityColor = getIntensityColor(maxIntensity);
 
+            // 检查是否需要播放重大警报
+            const intensityValue = parseFloat(maxIntensity);
+            if (intensityValue >= 7) {
+                playSound('major');
+            } else {
+                playSound('regular');
+            }
+
             addToHistory({
                 source: "预警源：中国地震台网",
                 eventId: data.EventID || `cenc_${Date.now()}`,
@@ -489,7 +1114,6 @@
             });
 
             const speakText = `中国地震台网发布新地震预警。震源地：${hypocenter}，震级：${magnitude}级，震源深度：${depth}，最大烈度：${maxIntensity}度，发报时间：${reportTime}。`;
-            playAlertSound();
             speakChinese(speakText);
 
             return `
@@ -530,6 +1154,8 @@
         `;
 
         function fetchCencData() {
+            if (!currentSettings.sources.cenc) return;
+            
             const cencApiUrl = "https://api.wolfx.jp/cenc_eew.json";
             fetch(cencApiUrl)
                 .then(response => response.json())
@@ -553,21 +1179,22 @@
                     }
 
                     if (lastValidCencData && (now - cencShowStartTime) < WARNING_DURATION) {
-                        cencCard.innerHTML = cencCardRenderer(lastValidCencData);
+                        document.getElementById('cenc-card').innerHTML = cencCardRenderer(lastValidCencData);
                         if (isNewWarning) console.log("中国地震台网检测到新预警，重置3分钟显示");
                     } else {
-                        cencCard.innerHTML = cencNoWarningHtml;
+                        document.getElementById('cenc-card').innerHTML = cencNoWarningHtml;
                         lastValidCencData = null;
                         cencShowStartTime = null;
                     }
                 })
                 .catch(() => {
-                    cencCard.innerHTML = cencNoWarningHtml;
+                    document.getElementById('cenc-card').innerHTML = cencNoWarningHtml;
                     lastValidCencData = null;
                     cencShowStartTime = null;
                 });
         }
 
+        // JMA预警处理
         function jmaDataComparer(newData, oldData) {
             if (!newData || !oldData) return false;
             return (
@@ -592,6 +1219,15 @@
             const isFinal = data.isFinal ? "最终報" : "中間報";
             const reportType = data.isFinal ? "最终" : "中间";
 
+            // 检查是否需要播放重大警报
+            const intensityValue = parseFloat(maxIntensity);
+            const isAlert = data.IsAlert === true || intensityValue >= 5;
+            if (isAlert) {
+                playSound('major');
+            } else {
+                playSound('regular');
+            }
+
             addToHistory({
                 source: "预警源：日本JMA",
                 eventId: data.EventID || `jma_${Date.now()}`,
@@ -607,7 +1243,6 @@
             });
 
             const speakText = `日本JMA发布${reportType}地震预警。震源地：${hypocenter}，震级：${magnitude}级，震源深度：${depth}，最大震度：${maxIntensity}度，发报时间：${announcedTime}。`;
-            playAlertSound();
             speakChinese(speakText);
 
             return `
@@ -648,6 +1283,8 @@
         `;
 
         function fetchJmaData() {
+            if (!currentSettings.sources.jma) return;
+            
             const jmaApiUrl = "https://api.wolfx.jp/jma_eew.json";
             fetch(jmaApiUrl)
                 .then(response => response.json())
@@ -671,21 +1308,22 @@
                     }
 
                     if (lastValidJmaData && (now - jmaShowStartTime) < WARNING_DURATION) {
-                        jmaCard.innerHTML = jmaCardRenderer(lastValidJmaData);
+                        document.getElementById('jma-card').innerHTML = jmaCardRenderer(lastValidJmaData);
                         if (isNewWarning) console.log("日本JMA检测到新预警，重置3分钟显示");
                     } else {
-                        jmaCard.innerHTML = jmaNoWarningHtml;
+                        document.getElementById('jma-card').innerHTML = jmaNoWarningHtml;
                         lastValidJmaData = null;
                         jmaShowStartTime = null;
                     }
                 })
                 .catch(() => {
-                    jmaCard.innerHTML = jmaNoWarningHtml;
+                    document.getElementById('jma-card').innerHTML = jmaNoWarningHtml;
                     lastValidJmaData = null;
                     jmaShowStartTime = null;
                 });
         }
 
+        // 地震综合信息处理
         const earthquakeList = document.getElementById("earthquake-list");
         let lastMergedEarthquakeData = null;
 
@@ -776,21 +1414,57 @@
             const errorEarthquake = document.getElementById("error-earthquake");
 
             try {
-                const [cencRes, p2pRes] = await Promise.all([
-                    fetch(cencEqUrl),
-                    fetch(p2pEqUrl)
-                ]);
-                if (!cencRes.ok || !p2pRes.ok) throw new Error("网络响应异常");
+                const promises = [];
+                if (currentSettings.infoSources.cenc) promises.push(fetch(cencEqUrl));
+                if (currentSettings.infoSources.p2p) promises.push(fetch(p2pEqUrl));
+                
+                if (promises.length === 0) {
+                    earthquakeList.innerHTML = `
+                        <div class="col-span-full bg-card rounded-xl card-shadow p-5 animate-fade-in text-center">
+                            <p class="text-gray-600">所有地震情报源已关闭</p>
+                        </div>
+                    `;
+                    return;
+                }
 
-                const cencData = await cencRes.json();
-                const p2pData = await p2pRes.json();
+                const responses = await Promise.all(promises);
+                responses.forEach(res => {
+                    if (!res.ok) throw new Error("网络响应异常");
+                });
 
-                const cencProcessed = processCencEqData(cencData);
-                const p2pProcessed = processP2pEqData(p2pData);
+                let cencData = [];
+                let p2pData = [];
+                
+                // 根据启用的数据源处理返回结果
+                if (currentSettings.infoSources.cenc) {
+                    cencData = await responses[0].json();
+                }
+                if (currentSettings.infoSources.p2p) {
+                    const p2pIndex = currentSettings.infoSources.cenc ? 1 : 0;
+                    p2pData = await responses[p2pIndex].json();
+                }
+
+                const cencProcessed = currentSettings.infoSources.cenc ? processCencEqData(cencData) : [];
+                const p2pProcessed = currentSettings.infoSources.p2p ? processP2pEqData(p2pData) : [];
                 const mergedData = mergeAndSortEqData(cencProcessed, p2pProcessed);
 
                 const mergedStr = JSON.stringify(mergedData);
                 if (mergedStr === JSON.stringify(lastMergedEarthquakeData)) return;
+                
+                // 检测新的地震情报
+                let hasNewEarthquakes = false;
+                mergedData.forEach(item => {
+                    if (!processedEarthquakeIds.has(item.eventId)) {
+                        processedEarthquakeIds.add(item.eventId);
+                        hasNewEarthquakes = true;
+                    }
+                });
+                
+                // 如果有新情报，播放通知音
+                if (hasNewEarthquakes) {
+                    playSound('info');
+                }
+                
                 lastMergedEarthquakeData = mergedData;
 
                 errorEarthquake.classList.add("hidden");
@@ -822,6 +1496,7 @@
             }
         }
 
+        // 更新徽章状态
         function updateBadges() {
             const chinaBadge = document.getElementById("china-badge");
             const japanBadge = document.getElementById("japan-badge");
@@ -829,18 +1504,25 @@
 
             const cwaHasValid = lastValidCwaData && (now - cwaShowStartTime) < WARNING_DURATION;
             const cencHasValid = lastValidCencData && (now - cencShowStartTime) < WARNING_DURATION;
-            chinaBadge.className = cwaHasValid || cencHasValid
-                ? "px-3 py-1 bg-warning text-white text-xs font-semibold rounded-full"
-                : "px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full";
-            chinaBadge.textContent = cwaHasValid || cencHasValid ? "有有效预警" : "无有效预警";
+            const chinaHasVisible = currentSettings.sources.cwa || currentSettings.sources.cenc;
+            
+            if (chinaHasVisible) {
+                chinaBadge.className = cwaHasValid || cencHasValid
+                    ? "px-3 py-1 bg-warning text-white text-xs font-semibold rounded-full"
+                    : "px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full";
+                chinaBadge.textContent = cwaHasValid || cencHasValid ? "有有效预警" : "无有效预警";
+            }
 
             const jmaHasValid = lastValidJmaData && (now - jmaShowStartTime) < WARNING_DURATION;
-            japanBadge.className = jmaHasValid
-                ? "px-3 py-1 bg-warning text-white text-xs font-semibold rounded-full"
-                : "px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full";
-            japanBadge.textContent = jmaHasValid ? "有有效预警" : "无有效预警";
+            if (currentSettings.sources.jma) {
+                japanBadge.className = jmaHasValid
+                    ? "px-3 py-1 bg-warning text-white text-xs font-semibold rounded-full"
+                    : "px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full";
+                japanBadge.textContent = jmaHasValid ? "有有效预警" : "无有效预警";
+            }
         }
 
+        // 处理浏览器自动播放限制
         function handleFirstInteraction() {
             const tempAudio = new Audio();
             tempAudio.src = 'data:audio/mp3;base64,//uQxAAAEvGLs=';
@@ -850,6 +1532,7 @@
             document.removeEventListener('touchstart', handleFirstInteraction);
         }
 
+        // 初始化与定时更新
         function initAndUpdate() {
             fetchCwaData();
             fetchCencData();
@@ -859,16 +1542,23 @@
             updateBadges();
         }
 
+        // 页面加载完成后初始化
         window.addEventListener('DOMContentLoaded', () => {
+            // 加载设置
+            loadSettings();
+            applySettings();
+            
+            // 处理音频自动播放限制
             document.addEventListener('click', handleFirstInteraction);
             document.addEventListener('touchstart', handleFirstInteraction);
             
+            // 初始化历史记录
             updateHistoryUI();
+            
+            // 初始化数据
             window.speechSynthesis.onvoiceschanged = initAndUpdate;
             initAndUpdate();
         });
-
-        setInterval(initAndUpdate, 10000);
     </script>
 </body>
 </html>
